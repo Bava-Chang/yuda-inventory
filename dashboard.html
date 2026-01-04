@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>友達配件庫存 Dashboard（GitHub Pages 版）</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+      background:linear-gradient(135deg,#050816 0%,#111827 60%,#0b1220 100%);
+      color:#e5e7eb;
+      padding:20px;
+      min-height:100vh;
+    }
+    .header{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+      margin-bottom:18px;
+      padding:18px 18px;
+      background:rgba(15,23,42,.6);
+      border-radius:18px;
+      border:1px solid rgba(0,212,255,.18);
+      backdrop-filter: blur(10px);
+    }
+    .title{display:flex;flex-direction:column;gap:4px}
+    .title h1{color:#00d4ff;font-size:22px;font-weight:900;letter-spacing:.5px}
+    .title .sub{color:#94a3b8;font-size:12px}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+    .select,.btn{
+      background:rgba(15,52,96,.85);
+      border:1px solid rgba(0,212,255,.22);
+      color:#cbd5e1;
+      padding:8px 10px;
+      border-radius:12px;
+      outline:none;
+      font-size:13px;
+    }
+    .btn{cursor:pointer;font-weight:800}
+    .grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px}
+    .stat{
+      background:rgba(15,23,42,.6);
+      border:1px solid rgba(0,212,255,.14);
+      border-radius:16px;
+      padding:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.2);
+      backdrop-filter: blur(10px);
+    }
+    .stat-label{color:#94a3b8;font-size:12px;margin-bottom:8px}
+    .stat-value{color:#00d4ff;font-size:26px;font-weight:900}
+    .stat-unit{color:#94a3b8;font-size:12px;margin-left:6px;font-weight:600}
+    .card{
+      background:rgba(15,23,42,.6);
+      border:1px solid rgba(0,212,255,.14);
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.2);
+      backdrop-filter: blur(10px);
+      margin-bottom:16px;
+    }
+    .card h2{font-size:16px;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .chart{height:320px}
+    .chart.small{height:280px}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:900px){.two-col{grid-template-columns:1fr}}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid rgba(148,163,184,.15);
+    }
+    thead{background:rgba(15,52,96,.9)}
+    th,td{padding:10px 12px;font-size:12px;border-bottom:1px solid rgba(148,163,184,.12)}
+    th{color:#e2e8f0;text-align:left;font-weight:900}
+    tbody tr:hover{background:rgba(0,212,255,.06)}
+    .loading{color:#94a3b8;text-align:center;padding:14px}
+    .info{
+      margin-top:10px;
+      background:rgba(2,6,23,.35);
+      border:1px solid rgba(148,163,184,.12);
+      border-radius:12px;
+      padding:10px 12px;
+      color:#cbd5e1;
+      font-size:12px;
+      line-height:1.5;
+    }
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:900;border:1px solid rgba(148,163,184,.2)}
+    .high{background:rgba(239,68,68,.12);color:#fecaca;border-color:rgba(239,68,68,.25)}
+    .mid{background:rgba(245,158,11,.12);color:#fde68a;border-color:rgba(245,158,11,.25)}
+    .low{background:rgba(34,197,94,.12);color:#bbf7d0;border-color:rgba(34,197,94,.25)}
+    .error-message {
+      background: rgba(239, 68, 68, 0.2);
+      border: 2px solid rgba(239, 68, 68, 0.5);
+      color: #f87171;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+<script>
+  /** 
+   * 🔧 設定區：請修改此處的 WEBAPP_URL
+   * 此網址應與 index.html 中設定的相同
+   */
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwcpsfnAgQg0Ucj3E_FTmW3KY3sN1EwR55WrbzDFCadVkCr_0TTsawmiaH6UVX1dFrA5Q/exec"; // 👈 請在這裡填入您的 Apps Script 部署網址
+
+  /** JSONP（外部網站可用） */
+  function jsonp(url, timeoutMs){
+    if (timeoutMs === undefined) timeoutMs = 15000;
+    return new Promise(function(resolve,reject){
+      const cb = "cb_" + Math.random().toString(36).slice(2);
+      const script = document.createElement("script");
+      const timer = setTimeout(function(){ cleanup(); reject(new Error("JSONP timeout")); }, timeoutMs);
+
+      function cleanup(){
+        clearTimeout(timer);
+        try{ delete window[cb]; }catch(e){}
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cb] = function(data){ cleanup(); resolve(data); };
+      script.onerror = function(){ cleanup(); reject(new Error("JSONP load error")); };
+
+      const sep = url.indexOf("?") >= 0 ? "&" : "?";
+      script.src = url + sep + "callback=" + cb;
+      document.body.appendChild(script);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s||"")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+</script>
+
+<div class="header">
+  <div class="title">
+    <h1>友達配件庫存 Dashboard（GitHub Pages 版）</h1>
+    <div class="sub">資料來源：Transactions（IN/SHIP）＋ BOM（消耗表）</div>
+  </div>
+  <div class="controls">
+    <select id="rangeDays" class="select">
+      <option value="7">近7天</option>
+      <option value="14">近14天</option>
+      <option value="30" selected>近30天</option>
+      <option value="60">近60天</option>
+      <option value="90">近90天</option>
+      <option value="180">近180天</option>
+      <option value="365">近365天</option>
+    </select>
+    <button id="btnReload" class="btn">重新載入</button>
+  </div>
+</div>
+
+<div class="grid-stats">
+  <div class="stat"><div class="stat-label">T32 累計出貨</div><div class="stat-value" id="statT32">0<span class="stat-unit">台</span></div></div>
+  <div class="stat"><div class="stat-label">T55 累計出貨</div><div class="stat-value" id="statT55">0<span class="stat-unit">台</span></div></div>
+  <div class="stat"><div class="stat-label">T85 累計出貨</div><div class="stat-value" id="statT85">0<span class="stat-unit">台</span></div></div>
+  <div class="stat"><div class="stat-label">區間天數</div><div class="stat-value" id="statDays">0<span class="stat-unit">天</span></div></div>
+</div>
+
+<div class="card">
+  <h2>📈 出貨趨勢（SHIP）</h2>
+  <div class="chart"><canvas id="shipmentChart"></canvas></div>
+  <div class="info">
+    後端資料格式：<b>{date, T32, T55, T85}</b>（Code.gs 的 fetchShipmentData）
+  </div>
+</div>
+
+<div class="card">
+  <h2>📥 入庫分析（IN）</h2>
+  <div class="chart"><canvas id="inboundChart"></canvas></div>
+  <div class="info">
+    若入庫日期很少（資料稀疏），會自動改成<b>每週入庫總量</b>，避免圖表只剩一根柱看不出趨勢。
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <h2>🔧 各配件月平均用量</h2>
+    <table>
+      <thead><tr><th>配件</th><th style="text-align:right">月平均</th><th style="text-align:right">比例</th></tr></thead>
+      <tbody id="partTable"><tr><td colspan="3" class="loading">載入中</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>⚡ 配件用量分佈（Top10＋其他）</h2>
+    <div class="chart small"><canvas id="partDistChart"></canvas></div>
+    <div class="info">改成<b>水平長條</b>＋Top10，文字不會擠成一團。</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🎯 智能備貨建議（用量推算）</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>配件</th>
+        <th style="text-align:right">月平均</th>
+        <th style="text-align:right">日平均</th>
+        <th style="text-align:right">建議備貨(14天)</th>
+        <th style="text-align:right">安全庫存(7天)</th>
+        <th style="text-align:right">總建議量</th>
+        <th style="text-align:center">重要性</th>
+      </tr>
+    </thead>
+    <tbody id="suggestTable"><tr><td colspan="7" class="loading">載入中</td></tr></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>📋 近期入庫明細（IN）</h2>
+  <table>
+    <thead><tr><th>日期</th><th>配件</th><th style="text-align:right">數量</th><th>備註</th></tr></thead>
+    <tbody id="inboundTable"><tr><td colspan="4" class="loading">載入中</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+  let shipments = [];
+  let inbounds = [];
+  let bom = {};
+
+  let shipmentChart=null, inboundChart=null, partDistChart=null;
+
+  function weekKey(dateStr){
+    const d = new Date(dateStr + "T00:00:00");
+    const day = (d.getDay() + 6) % 7; // Mon=0
+    d.setDate(d.getDate() - day);
+    const y=d.getFullYear();
+    const m=String(d.getMonth()+1).padStart(2,"0");
+    const dd=String(d.getDate()).padStart(2,"0");
+    return y + "-" + m + "-" + dd;
+  }
+
+  async function loadDashboard(){
+    if (!WEBAPP_URL) {
+      showErr(new Error('請先在程式碼中設定 WEBAPP_URL'));
+      return;
+    }
+
+    const rangeDays = Number(document.getElementById("rangeDays").value || 30);
+    const url = WEBAPP_URL + "?api=dashboard&rangeDays=" + encodeURIComponent(rangeDays);
+    const res = await jsonp(url);
+
+    if(!res || res.ok !== true){
+      throw new Error(res && res.error ? res.error : "後端回傳失敗（ok != true）");
+    }
+
+    shipments = Array.isArray(res.shipments) ? res.shipments : [];
+    inbounds  = Array.isArray(res.inbounds)  ? res.inbounds  : [];  // 修正：使用 inbounds
+    bom       = (res.bom && typeof res.bom === "object") ? res.bom : {};
+
+    renderAll(rangeDays);
+  }
+
+  function renderAll(rangeDays){
+    // Stats
+    const daysSet = new Set();
+    shipments.forEach(function(r) {
+      if (r.date) daysSet.add(r.date);
+    });
+    
+    let sumT32 = 0, sumT55 = 0, sumT85 = 0;
+    shipments.forEach(function(r) {
+      sumT32 += Number(r.T32||0);
+      sumT55 += Number(r.T55||0);
+      sumT85 += Number(r.T85||0);
+    });
+
+    document.getElementById("statT32").innerHTML = sumT32 + '<span class="stat-unit">台</span>';
+    document.getElementById("statT55").innerHTML = sumT55 + '<span class="stat-unit">台</span>';
+    document.getElementById("statT85").innerHTML = sumT85 + '<span class="stat-unit">台</span>';
+    document.getElementById("statDays").innerHTML = daysSet.size + '<span class="stat-unit">天</span>';
+
+    // Charts + Tables
+    renderShipmentChart();
+    renderInboundChart();
+    const usage = calcMonthlyPartUsage(rangeDays);
+    renderPartTable(usage);
+    renderPartDist(usage);
+    renderSuggestion(usage);
+    renderInboundTable();
+  }
+
+  function renderShipmentChart(){
+    if(shipmentChart) shipmentChart.destroy();
+    const labels = [];
+    const d32 = [];
+    const d55 = [];
+    const d85 = [];
+    
+    shipments.forEach(function(r) {
+      labels.push(String(r.date||"").substring(5));
+      d32.push(Number(r.T32||0));
+      d55.push(Number(r.T55||0));
+      d85.push(Number(r.T85||0));
+    });
+
+    shipmentChart = new Chart(document.getElementById("shipmentChart"),{
+      type:"line",
+      data:{
+        labels: labels,
+        datasets:[
+          {label:"T32",data:d32,tension:.25},
+          {label:"T55",data:d55,tension:.25},
+          {label:"T85",data:d85,tension:.25},
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{labels:{color:"#cbd5e1"}},
+          tooltip:{backgroundColor:"rgba(15,52,96,.95)",titleColor:"#00d4ff",bodyColor:"#cbd5e1",borderColor:"rgba(0,212,255,.5)",borderWidth:1}
+        },
+        scales:{
+          x:{grid:{color:"rgba(100,116,139,.2)"},ticks:{color:"#94a3b8",autoSkip:true,maxTicksLimit:12,maxRotation:0}},
+          y:{beginAtZero:true,grid:{color:"rgba(100,116,139,.2)"},ticks:{color:"#94a3b8"}}
+        }
+      }
+    });
+  }
+
+  function renderInboundChart(){
+    if(inboundChart) inboundChart.destroy();
+    if(!inbounds.length){
+      inboundChart = new Chart(document.getElementById("inboundChart"),{
+        type:"bar", data:{labels:["無資料"],datasets:[{label:"入庫",data:[0]}]},
+        options:{responsive:true,maintainAspectRatio:false}
+      });
+      return;
+    }
+
+    const uniqueDays = new Set();
+    inbounds.forEach(function(x) {
+      if (x.date) uniqueDays.add(x.date);
+    });
+    const mode = uniqueDays.size <= 10 ? "week" : "day";
+
+    const map = new Map();
+    inbounds.forEach(function(r) {
+      const date = String(r.date||"");
+      const qty = Number(r.qty||0);
+      if(!date || !qty) return;
+      const key = (mode==="week") ? weekKey(date) : date;
+      map.set(key, (map.get(key)||0) + qty);
+    });
+
+    const keys = Array.from(map.keys()).sort();
+    const labels = keys.map(function(k) { return k.substring(5); });
+    const values = keys.map(function(k) { return map.get(k); });
+
+    inboundChart = new Chart(document.getElementById("inboundChart"),{
+      type:"bar",
+      data:{labels:labels,datasets:[{label:(mode==="week"?"每週入庫總量":"每日入庫總量"),data:values}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{labels:{color:"#cbd5e1"}},
+          tooltip:{
+            backgroundColor:"rgba(15,52,96,.95)",titleColor:"#00d4ff",bodyColor:"#cbd5e1",
+            borderColor:"rgba(0,212,255,.5)",borderWidth:1,
+            callbacks:{
+              title:function(items){
+                const i = items[0].dataIndex;
+                return (mode==="week") ? ("週起點: " + keys[i]) : ("日期: " + keys[i]);
+              }
+            }
+          }
+        },
+        scales:{
+          x:{grid:{color:"rgba(100,116,139,.2)"},ticks:{color:"#94a3b8",autoSkip:true,maxTicksLimit:12,maxRotation:0}},
+          y:{beginAtZero:true,grid:{color:"rgba(100,116,139,.2)"},ticks:{color:"#94a3b8"}}
+        }
+      }
+    });
+  }
+
+  /** 用 shipments + bom 推算配件「月平均用量」 */
+  function calcMonthlyPartUsage(rangeDays){
+    const usage = {};
+    shipments.forEach(function(r) {
+      const t32 = Number(r.T32||0);
+      const t55 = Number(r.T55||0);
+      const t85 = Number(r.T85||0);
+
+      function addByProduct(product, qty) {
+        const b = bom[product] || {};
+        Object.keys(b).forEach(function(part) {
+          const per = Number(b[part]||0);
+          if(!per) return;
+          usage[part] = (usage[part]||0) + qty * per;
+        });
+      }
+      
+      if(t32) addByProduct("T32", t32);
+      if(t55) addByProduct("T55", t55);
+      if(t85) addByProduct("T85", t85);
+    });
+
+    const span = Math.max(1, Number(rangeDays||30));
+    const factor = 30 / span;
+    Object.keys(usage).forEach(function(k) {
+      usage[k] = usage[k] * factor;
+    });
+    return usage;
+  }
+
+  function renderPartTable(usage){
+    const tbody = document.getElementById("partTable");
+    const entries = Object.keys(usage).map(function(k) {
+      return [k, usage[k]];
+    }).filter(function(e) {
+      return Number(e[1]) > 0;
+    }).sort(function(a,b) {
+      return b[1] - a[1];
+    });
+    
+    if(!entries.length){
+      tbody.innerHTML = '<tr><td colspan="3" class="loading">目前區間沒有可計算的用量</td></tr>';
+      return;
+    }
+    
+    let total = 0;
+    entries.forEach(function(e) {
+      total += e[1];
+    });
+    
+    const rows = entries.map(function(e) {
+      const part = e[0];
+      const qty = e[1];
+      const pct = total ? (qty/total*100) : 0;
+      return '<tr>' +
+        '<td>' + escapeHtml(part) + '</td>' +
+        '<td style="text-align:right">' + qty.toFixed(1) + '</td>' +
+        '<td style="text-align:right">' + pct.toFixed(1) + '%</td>' +
+      '</tr>';
+    }).join("");
+    
+    tbody.innerHTML = rows;
+  }
+
+  function renderPartDist(usage){
+    if(partDistChart) partDistChart.destroy();
+    const entries = Object.keys(usage).map(function(k) {
+      return [k, usage[k]];
+    }).filter(function(e) {
+      return Number(e[1]) > 0;
+    }).sort(function(a,b) {
+      return b[1] - a[1];
+    });
+    
+    if(!entries.length) return;
+
+    let total = 0;
+    entries.forEach(function(e) {
+      total += e[1];
+    });
+    
+    const topN = 10;
+    const top = entries.slice(0, topN);
+    const rest = entries.slice(topN);
+    const labels = top.map(function(e) { return e[0]; });
+    const values = top.map(function(e) { return Number(e[1])||0; });
+    
+    if(rest.length){
+      labels.push("其他");
+      let restSum = 0;
+      rest.forEach(function(e) {
+        restSum += Number(e[1])||0;
+      });
+      values.push(restSum);
+    }
+
+    partDistChart = new Chart(document.getElementById("partDistChart"),{
+      type:"bar",
+      data:{labels:labels,datasets:[{label:"月平均用量",data:values}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,indexAxis:"y",
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:"rgba(15,52,96,.95)",titleColor:"#00d4ff",bodyColor:"#cbd5e1",
+            borderColor:"rgba(0,212,255,.5)",borderWidth:1,
+            callbacks:{
+              label:function(ctx){
+                const v = Number(ctx.raw||0);
+                const pct = total ? (v/total*100) : 0;
+                return " " + v.toFixed(1) + "（" + pct.toFixed(1) + "%）";
+              }
+            }
+          }
+        },
+        scales:{
+          x:{beginAtZero:true,grid:{color:"rgba(100,116,139,.2)"},ticks:{color:"#94a3b8"}},
+          y:{grid:{display:false},ticks:{color:"#cbd5e1"}}
+        }
+      }
+    });
+  }
+
+  function renderSuggestion(usage){
+    const tbody = document.getElementById("suggestTable");
+    const entries = Object.keys(usage).map(function(k) {
+      return [k, usage[k]];
+    }).filter(function(e) {
+      return Number(e[1]) > 0;
+    }).sort(function(a,b) {
+      return b[1] - a[1];
+    });
+    
+    if(!entries.length){
+      tbody.innerHTML = '<tr><td colspan="7" class="loading">目前區間沒有備貨建議</td></tr>';
+      return;
+    }
+    
+    let total = 0;
+    entries.forEach(function(e) {
+      total += e[1];
+    });
+
+    const rows = entries.map(function(e) {
+      const part = e[0];
+      const monthQty = e[1];
+      const dayQty = monthQty / 30;
+      const suggest = dayQty * 14;
+      const safe = dayQty * 7;
+      const sum = suggest + safe;
+
+      const pct = total ? (monthQty/total*100) : 0;
+      let cls="low";
+      if(pct>=15) cls="high"; else if(pct>=5) cls="mid";
+      const badge = cls==="high"
+        ? '<span class="badge high">高</span>'
+        : cls==="mid"
+          ? '<span class="badge mid">中</span>'
+          : '<span class="badge low">低</span>';
+
+      return '<tr>' +
+        '<td>' + escapeHtml(part) + '</td>' +
+        '<td style="text-align:right">' + monthQty.toFixed(1) + '</td>' +
+        '<td style="text-align:right">' + dayQty.toFixed(2) + '</td>' +
+        '<td style="text-align:right">' + suggest.toFixed(1) + '</td>' +
+        '<td style="text-align:right">' + safe.toFixed(1) + '</td>' +
+        '<td style="text-align:right">' + sum.toFixed(1) + '</td>' +
+        '<td style="text-align:center">' + badge + '</td>' +
+      '</tr>';
+    }).join("");
+    
+    tbody.innerHTML = rows;
+  }
+
+  function renderInboundTable(){
+    const tbody = document.getElementById("inboundTable");
+    if(!inbounds.length){
+      tbody.innerHTML = '<tr><td colspan="4" class="loading">目前沒有入庫明細</td></tr>';
+      return;
+    }
+    const rows = inbounds.slice().sort(function(a,b) {
+      return String(b.date).localeCompare(String(a.date));
+    }).slice(0,50);
+    
+    const html = rows.map(function(r) {
+      return '<tr>' +
+        '<td>' + escapeHtml(r.date||"") + '</td>' +
+        '<td>' + escapeHtml(r.part||"") + '</td>' +
+        '<td style="text-align:right">' + Number(r.qty||0) + '</td>' +
+        '<td>' + escapeHtml(r.note||"") + '</td>' +
+      '</tr>';
+    }).join("");
+    
+    tbody.innerHTML = html;
+  }
+
+  async function boot(){
+    document.getElementById("btnReload").addEventListener("click", function() {
+      document.querySelectorAll(".loading").forEach(function(el) {
+        el.textContent="載入中";
+      });
+      loadDashboard().catch(showErr);
+    });
+    
+    document.getElementById("rangeDays").addEventListener("change", function() {
+      loadDashboard().catch(showErr);
+    });
+
+    await loadDashboard();
+  }
+
+  function showErr(err){
+    console.error(err);
+    const msg = err && err.message ? err.message : String(err);
+    alert("❌ 讀取資料失敗：\n" + msg + "\n\n請確認：\n1) WEBAPP_URL 是 /exec\n2) Web App 部署權限允許任何人存取\n3) 後端 doGet 支援 api=dashboard");
+    document.querySelectorAll(".loading").forEach(function(el) {
+      el.textContent="讀取失敗";
+    });
+  }
+
+  boot().catch(showErr);
+</script>
+</body>
+</html>

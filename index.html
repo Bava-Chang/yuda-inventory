@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>友達配件庫存管理系統</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #e0e0e0;
+    padding: 20px;
+    min-height: 100vh;
+    font-size: 16px;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+    padding: 28px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    margin-bottom: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .header:hover {
+    box-shadow: 0 12px 40px rgba(0, 212, 255, 0.2);
+  }
+
+  .header h1 {
+    color: #00d4ff;
+    font-size: 36px;
+    font-weight: 700;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    margin-bottom: 12px;
+  }
+
+  .header-subtitle {
+    color: #94a3b8;
+    font-size: 17px;
+    margin-bottom: 20px;
+  }
+
+  .btn-dashboard {
+    padding: 14px 28px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 17px;
+    font-weight: 600;
+    background: rgba(0, 212, 255, 0.15);
+    color: #00d4ff;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border: 2px solid #00d4ff;
+  }
+
+  .btn-dashboard:hover {
+    background: #00d4ff;
+    color: #0a0a0a;
+    box-shadow: 0 6px 20px rgba(0, 212, 255, 0.6);
+    transform: translateY(-3px);
+  }
+
+  .btn-dashboard:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+  }
+
+  .card {
+    background: rgba(15, 52, 96, 0.6);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    border-color: rgba(0, 212, 255, 0.5);
+  }
+
+  .card h2 {
+    color: #00d4ff;
+    font-size: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .card h2::before {
+    content: '';
+    width: 5px;
+    height: 28px;
+    background: linear-gradient(180deg, #00d4ff 0%, #0084ff 100%);
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+  }
+
+  .input-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 16px;
+  }
+
+  .input-section > div {
+    padding: 24px;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 14px;
+    border: 1px solid rgba(100, 116, 139, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .input-section > div:hover {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(0, 212, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .input-section h3 {
+    margin-bottom: 20px;
+    font-size: 16px;
+  }
+
+  .field-group {
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    font-size: 15px;
+    color: #94a3b8;
+    margin-bottom: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  input[type="number"],
+  input[type="text"],
+  select {
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(30, 41, 59, 0.8);
+    border: 2px solid rgba(100, 116, 139, 0.5);
+    border-radius: 10px;
+    color: #e0e0e0;
+    font-size: 17px;
+    transition: all 0.3s ease;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: #00d4ff;
+    box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.15);
+    background: rgba(30, 41, 59, 1);
+    transform: translateY(-1px);
+  }
+
+  input:hover, select:hover {
+    border-color: rgba(0, 212, 255, 0.6);
+  }
+
+  input::placeholder {
+    color: #64748b;
+  }
+
+  button {
+    width: 100%;
+    padding: 16px 28px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 8px;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #00d4ff 0%, #0084ff 100%);
+    color: #0a0a0a;
+    box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+  }
+
+  .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 212, 255, 0.6);
+  }
+
+  .btn:active {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 16px;
+  }
+
+  thead {
+    background: rgba(15, 52, 96, 0.8);
+  }
+
+  th {
+    padding: 18px 16px;
+    text-align: left;
+    color: #00d4ff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 0.8px;
+    border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+  }
+
+  td {
+    padding: 16px;
+    border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+    color: #cbd5e1;
+    font-size: 16px;
+  }
+
+  tbody tr {
+    transition: all 0.2s ease;
+  }
+
+  tbody tr:hover {
+    background: rgba(0, 212, 255, 0.1);
+    transform: scale(1.01);
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+  }
+
+  .pill:hover {
+    transform: scale(1.05);
+  }
+
+  .green {
+    background: rgba(34, 197, 94, 0.25);
+    color: #4ade80;
+    border: 2px solid rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+  }
+
+  .yellow {
+    background: rgba(251, 191, 36, 0.25);
+    color: #fbbf24;
+    border: 2px solid rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+  }
+
+  .red {
+    background: rgba(239, 68, 68, 0.25);
+    color: #f87171;
+    border: 2px solid rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .muted {
+    color: #64748b;
+    font-size: 14px;
+    margin-top: 14px;
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 10px;
+    border-left: 4px solid rgba(100, 116, 139, 0.5);
+  }
+
+  .qty-display {
+    font-weight: 700;
+    font-size: 18px;
+    color: #00d4ff;
+  }
+
+  .low-stock {
+    color: #f87171;
+    font-weight: 700;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 50px;
+    color: #64748b;
+    font-size: 18px;
+  }
+
+  .loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+  }
+
+  .error-message {
+    background: rgba(239, 68, 68, 0.2);
+    border: 2px solid rgba(239, 68, 68, 0.5);
+    color: #f87171;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .config-warning {
+    background: rgba(251, 191, 36, 0.2);
+    border: 2px solid rgba(251, 191, 36, 0.5);
+    color: #fbbf24;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 768px) {
+    .input-section {
+      grid-template-columns: 1fr;
+    }
+    
+    .header h1 {
+      font-size: 28px;
+    }
+    
+    table {
+      font-size: 14px;
+    }
+    
+    th, td {
+      padding: 12px 10px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>⚙️ 友達配件庫存管理系統</h1>
+    <div class="header-subtitle">Real-time Inventory Management Dashboard (GitHub Pages Version)</div>
+    <button class="btn-dashboard" onclick="openDashboard()">📊 開啟分析 Dashboard</button>
+  </div>
+
+  <div id="configWarning" style="display: none;" class="config-warning">
+    ⚠️ <strong>尚未設定 API 網址</strong><br>
+    請在本頁面的 JavaScript 程式碼中設定 <code>WEBAPP_URL</code> 為您的 Google Apps Script 部署網址
+  </div>
+
+  <div class="card">
+    <h2>📝 出貨 & 進貨作業區</h2>
+    
+    <div class="input-section">
+      <!-- 左側：出貨作業 -->
+      <div>
+        <h3 style="color: #94a3b8; font-size: 16px; margin-bottom: 20px; text-transform: uppercase; font-weight: 700;">📦 出貨作業（自動扣庫存）</h3>
+        <div class="field-group">
+          <label for="t32">T32 出貨數量</label>
+          <input id="t32" type="number" min="0" value="0" placeholder="0">
+        </div>
+        <div class="field-group">
+          <label for="t55">T55 出貨數量</label>
+          <input id="t55" type="number" min="0" value="0" placeholder="0">
+        </div>
+        <div class="field-group">
+          <label for="t85">T85 出貨數量</label>
+          <input id="t85" type="number" min="0" value="0" placeholder="0">
+        </div>
+        <div class="field-group">
+          <label for="shipNote">備註說明（選填）</label>
+          <input id="shipNote" type="text" placeholder="例如：8/20 友達出貨">
+        </div>
+        <button class="btn" onclick="submitShipment()">🚀 記錄出貨 & 更新庫存</button>
+        <div class="muted">
+          💡 依據「消耗表」自動換算配件扣減量
+        </div>
+      </div>
+
+      <!-- 右側：進貨作業 -->
+      <div>
+        <h3 style="color: #94a3b8; font-size: 16px; margin-bottom: 20px; text-transform: uppercase; font-weight: 700;">📥 進貨入庫作業</h3>
+        <div class="field-group">
+          <label for="inItem">庫存項目</label>
+          <select id="inItem">
+            <option value="">請選擇項目...</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="inQty">進貨數量</label>
+          <input id="inQty" type="number" min="1" value="1" placeholder="1">
+        </div>
+        <div class="field-group">
+          <label for="inNote">備註說明（選填）</label>
+          <input id="inNote" type="text" placeholder="例如：供應商A 入庫">
+        </div>
+        <button class="btn" onclick="submitInbound()">✅ 記錄進貨 & 更新庫存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📊 目前庫存狀態（即時監控）</h2>
+    <div id="invTable" class="loading">讀取庫存資料中</div>
+    <div class="muted">
+      🚦 庫存燈號規則：
+      <span class="pill green">充足 > 80%</span>
+      <span class="pill yellow">注意 60-80%</span>
+      <span class="pill red">警示 < 60%</span>
+      （相對於「最低庫存」基準值）
+    </div>
+  </div>
+
+<script>
+/**
+ * 🔧 設定區：請修改此處的 WEBAPP_URL
+ * 
+ * 步驟：
+ * 1. 在 Google Apps Script 部署為網頁應用程式
+ * 2. 複製部署網址（應該以 /exec 結尾）
+ * 3. 貼到下方的 WEBAPP_URL 變數中
+ * 
+ * 範例：https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+ */
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwcpsfnAgQg0Ucj3E_FTmW3KY3sN1EwR55WrbzDFCadVkCr_0TTsawmiaH6UVX1dFrA5Q/exec"; // 👈 請在這裡填入您的 Apps Script 部署網址
+
+// ==================== 以下為程式邏輯，無需修改 ====================
+
+/** JSONP 跨域請求函數 */
+function jsonp(url, timeoutMs) {
+  if (timeoutMs === undefined) timeoutMs = 15000;
+  
+  return new Promise(function(resolve, reject) {
+    const cb = "cb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const timer = setTimeout(function() {
+      cleanup();
+      reject(new Error("JSONP timeout"));
+    }, timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timer);
+      try {
+        delete window[cb];
+      } catch(e) {}
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    }
+
+    window[cb] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+    
+    script.onerror = function() {
+      cleanup();
+      reject(new Error("JSONP load error"));
+    };
+
+    const sep = url.indexOf("?") >= 0 ? "&" : "?";
+    script.src = url + sep + "callback=" + cb;
+    document.body.appendChild(script);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function openDashboard() {
+  if (!WEBAPP_URL) {
+    alert('⚠️ 請先設定 WEBAPP_URL\n\n請在本頁面的 JavaScript 程式碼中設定 WEBAPP_URL 為您的 Google Apps Script 部署網址');
+    return;
+  }
+  window.open('dashboard.html', '_blank');
+}
+
+function renderTable(data) {
+  if (!data || !data.ok) {
+    document.getElementById('invTable').innerHTML = '<div class="error-message">資料載入失敗：' + escapeHtml(data && data.error ? data.error : '未知錯誤') + '</div>';
+    return;
+  }
+
+  const rows = data.inventory.map(function(r) {
+    const pill = '<span class="pill ' + r.light + '">' + r.pct + '%</span>';
+    const qtyClass = r.light === 'red' ? 'qty-display low-stock' : 'qty-display';
+    return '<tr>' +
+      '<td><strong>' + escapeHtml(r.item) + '</strong></td>' +
+      '<td style="text-align:right" class="' + qtyClass + '">' + r.qty + '</td>' +
+      '<td style="text-align:right">' + r.minQty + '</td>' +
+      '<td style="text-align:center">' + pill + '</td>' +
+      '</tr>';
+  }).join('');
+  
+  const html = '<table>' +
+    '<thead>' +
+      '<tr>' +
+        '<th>庫存項目</th>' +
+        '<th style="text-align:right">目前數量</th>' +
+        '<th style="text-align:right">最低庫存</th>' +
+        '<th style="text-align:center">狀態燈號</th>' +
+      '</tr>' +
+    '</thead>' +
+    '<tbody>' + rows + '</tbody>' +
+  '</table>';
+  
+  document.getElementById('invTable').innerHTML = html;
+
+  const sel = document.getElementById('inItem');
+  sel.innerHTML = '<option value="">請選擇項目...</option>' + 
+    data.items.map(function(i) {
+      return '<option value="' + escapeHtml(i) + '">' + escapeHtml(i) + '</option>';
+    }).join('');
+}
+
+function refresh() {
+  if (!WEBAPP_URL) {
+    document.getElementById('configWarning').style.display = 'block';
+    document.getElementById('invTable').innerHTML = '<div class="error-message">請先設定 WEBAPP_URL</div>';
+    return;
+  }
+
+  document.getElementById('invTable').innerHTML = '<div class="loading">讀取庫存資料中</div>';
+  
+  const url = WEBAPP_URL + "?api=inventory";
+  jsonp(url)
+    .then(renderTable)
+    .catch(function(error) {
+      console.error('Error:', error);
+      document.getElementById('invTable').innerHTML = 
+        '<div class="error-message">❌ 載入失敗：' + escapeHtml(error.message) + 
+        '<br><br>請確認：<br>' +
+        '1. WEBAPP_URL 設定正確<br>' +
+        '2. Web App 已部署且權限設為「任何人」<br>' +
+        '3. 網路連線正常</div>';
+    });
+}
+
+function submitShipment() {
+  if (!WEBAPP_URL) {
+    alert('⚠️ 請先設定 WEBAPP_URL');
+    return;
+  }
+
+  const payload = {
+    T32: Number(document.getElementById('t32').value || 0),
+    T55: Number(document.getElementById('t55').value || 0),
+    T85: Number(document.getElementById('t85').value || 0),
+    note: document.getElementById('shipNote').value || ''
+  };
+  
+  if (payload.T32 === 0 && payload.T55 === 0 && payload.T85 === 0) {
+    alert('⚠️ 請至少輸入一項出貨數量');
+    return;
+  }
+  
+  const url = WEBAPP_URL + "?api=ship&T32=" + payload.T32 + "&T55=" + payload.T55 + 
+              "&T85=" + payload.T85 + "&note=" + encodeURIComponent(payload.note);
+  
+  jsonp(url)
+    .then(function(data) {
+      if (data && data.ok) {
+        renderTable(data);
+        document.getElementById('t32').value = '0';
+        document.getElementById('t55').value = '0';
+        document.getElementById('t85').value = '0';
+        document.getElementById('shipNote').value = '';
+        alert('✅ 出貨記錄已完成，庫存已更新！');
+      } else {
+        alert('❌ 操作失敗：' + (data && data.error ? data.error : '未知錯誤'));
+      }
+    })
+    .catch(function(error) {
+      alert('❌ 操作失敗：' + error.message);
+    });
+}
+
+function submitInbound() {
+  if (!WEBAPP_URL) {
+    alert('⚠️ 請先設定 WEBAPP_URL');
+    return;
+  }
+
+  const item = document.getElementById('inItem').value;
+  const qty = Number(document.getElementById('inQty').value || 0);
+  const note = document.getElementById('inNote').value || '';
+  
+  if (!item || qty <= 0) {
+    alert('⚠️ 請選擇品項並輸入大於 0 的數量');
+    return;
+  }
+  
+  const url = WEBAPP_URL + "?api=inbound&item=" + encodeURIComponent(item) + 
+              "&qty=" + qty + "&note=" + encodeURIComponent(note);
+  
+  jsonp(url)
+    .then(function(data) {
+      if (data && data.ok) {
+        renderTable(data);
+        document.getElementById('inItem').value = '';
+        document.getElementById('inQty').value = '1';
+        document.getElementById('inNote').value = '';
+        alert('✅ 進貨記錄已完成，庫存已更新！');
+      } else {
+        alert('❌ 操作失敗：' + (data && data.error ? data.error : '未知錯誤'));
+      }
+    })
+    .catch(function(error) {
+      alert('❌ 操作失敗：' + error.message);
+    });
+}
+
+// 頁面載入時自動刷新
+document.addEventListener('DOMContentLoaded', refresh);
+</script>
+</body>
+</html>
